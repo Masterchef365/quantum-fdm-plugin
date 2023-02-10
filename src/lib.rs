@@ -30,3 +30,10 @@ impl UserState for ServerState {
 // Defines entry points for the engine to hook into.
 // Calls new() for the appropriate state.
 make_app_state!(ClientState, ServerState);
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn im_a_test() {}
+}

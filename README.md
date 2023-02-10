@@ -4,10 +4,16 @@ It is very important to give your resources unique names! Pick a **unique** name
 
 
 ## Preparation
-Make sure you have the `wasm32-unknown-unknown` target installed;
+Make sure you have the `wasm32-unknown-unknown` target installed:
 ```sh
 rustup target add wasm32-unknown-unknown
 ```
 
 ## Building
 Now you can use `cargo build --release` to build. Your plugin will show up under `target/wasm32-unknown-unknown/release/<cool pkg name>.wasm`.
+
+## Testing
+Because `.cargo/config.toml` is set up to compile for the WASM target, tests will fail to run by default. You can compile and run tests using the provided `test_pc` alias:
+```sh
+cargo test_pc
+```
