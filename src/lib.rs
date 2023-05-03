@@ -1,5 +1,8 @@
-use cimvr_common::{render::{Mesh, Vertex, Render, MeshHandle, Primitive, UploadMesh}, Transform};
-use cimvr_engine_interface::{make_app_state, prelude::*, println, pkg_namespace};
+use cimvr_common::{
+    render::{Mesh, MeshHandle, Primitive, Render, UploadMesh, Vertex},
+    Transform,
+};
+use cimvr_engine_interface::{make_app_state, pkg_namespace, prelude::*, println};
 
 // All state associated with client-side behaviour
 struct ClientState(Sim);
@@ -14,10 +17,11 @@ impl UserState for ClientState {
             .add_component(Render::new(WAVE_RDR).primitive(Primitive::Points))
             .build();
 
-        sched.add_system(Self::update)
-            .build();
+        sched.add_system(Self::update).build();
 
         let mut sim = Sim::new(100);
+
+        sim.real[10] = 1.;
 
         Self(sim)
     }
@@ -40,6 +44,11 @@ struct Sim {
     real: Vec<f32>,
 }
 
+const HBAR: f32 = 1.;
+const M: f32 = 1.;
+const DT: f32 = 0.1;
+const DX: f32 = 1.;
+
 impl Sim {
     pub fn new(n: usize) -> Self {
         Self {
@@ -48,7 +57,17 @@ impl Sim {
         }
     }
 
-    pub fn step(&mut self) {}
+    pub fn step(&mut self) {
+        let n = self.real.len();
+
+        for i in 1..n - 1 {
+            let c = HBAR * DT / (2. * M * DX.powi(2));
+
+            self.imag[i] += c * (self.real[i+1] + self.real[i-1] + 2. * self.real[i]);
+            self.real[i] -= c * (self.imag[i+1] + self.imag[i-1] + 2. * self.imag[i]);
+
+        }
+    }
 }
 
 fn sim_to_mesh(sim: &Sim) -> Mesh {
