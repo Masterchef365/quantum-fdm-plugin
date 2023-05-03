@@ -19,9 +19,11 @@ impl UserState for ClientState {
 
         sched.add_system(Self::update).build();
 
-        let mut sim = Sim::new(100);
+        //let mut sim = Sim::new(1000);
+        //let n = sim.real.len();
+        //sim.real[n/2] = 1.;
 
-        sim.real[10] = 1.;
+        let sim = wave_packet(DT * 50., 0., 1., 1000);
 
         Self(sim)
     }
@@ -89,3 +91,20 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
 // Defines entry points for the engine to hook into.
 // Calls new() for the appropriate state.
 make_app_state!(ClientState, DummyUserState);
+
+fn wave_packet(sigma: f32, x0: f32, k: f32, n: usize) -> Sim {
+    let (real, imag) = (0..n).map(|i| {
+        let x = ((i as f32 / n as f32) * 2. - 1.) * DT * n as f32 / 2.;
+
+        let x = x - x0;
+
+        let c = ((-(x-x0).powi(2))/(2. * sigma.powi(2))).exp();
+        let v = k * x;
+        (
+            c * v.cos(),
+            c * v.sin()
+        )
+    }).unzip();
+
+    Sim { real, imag }
+}
