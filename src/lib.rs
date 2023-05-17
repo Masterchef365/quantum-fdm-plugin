@@ -4,6 +4,8 @@ use cimvr_common::{
 };
 use cimvr_engine_interface::{make_app_state, pkg_namespace, prelude::*, println};
 
+mod array2d;
+
 // All state associated with client-side behaviour
 struct ClientState(Sim);
 
@@ -23,7 +25,7 @@ impl UserState for ClientState {
         //let n = sim.real.len();
         //sim.real[n/2] = 1.;
 
-        let sim = wave_packet(DT * 50., 0., 1., 1000);
+        let sim = wave_packet(DT * 50., 0., 1., 0.1, 1001);
 
         Self(sim)
     }
@@ -65,9 +67,8 @@ impl Sim {
         for i in 1..n - 1 {
             let c = HBAR * DT / (2. * M * DX.powi(2));
 
-            self.imag[i] += c * (self.real[i+1] + self.real[i-1] + 2. * self.real[i]);
-            self.real[i] -= c * (self.imag[i+1] + self.imag[i-1] + 2. * self.imag[i]);
-
+            self.imag[i] += c * (self.real[i + 1] + self.real[i - 1] + 2. * self.real[i]);
+            self.real[i] -= c * (self.imag[i + 1] + self.imag[i - 1] + 2. * self.imag[i]);
         }
     }
 }
@@ -92,19 +93,16 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
 // Calls new() for the appropriate state.
 make_app_state!(ClientState, DummyUserState);
 
-fn wave_packet(sigma: f32, x0: f32, k: f32, n: usize) -> Sim {
-    let (real, imag) = (0..n).map(|i| {
-        let x = ((i as f32 / n as f32) * 2. - 1.) * DT * n as f32 / 2.;
+fn wave_packet(sigma: f32, x0: f32, k: f32, amp: f32, n: usize) -> Sim {
+    let (real, imag) = (0..n)
+        .map(|i| {
+            let x = ((i as f32 / n as f32) * 2. - 1.) * DT * n as f32 / 2.;
 
-        let x = x - x0;
-
-        let c = ((-(x-x0).powi(2))/(2. * sigma.powi(2))).exp();
-        let v = k * x;
-        (
-            c * v.cos(),
-            c * v.sin()
-        )
-    }).unzip();
+            let c = amp * ((-(x - x0).powi(2)) / (2. * sigma.powi(2))).exp();
+            let v = k * x;
+            (c * v.cos(), c * v.sin())
+        })
+        .unzip();
 
     Sim { real, imag }
 }
