@@ -25,8 +25,8 @@ impl UserState for ClientState {
 
         let mut sim = Sim::new(1000);
         let n = sim.real.len();
-        //sim.real[n/2] = 1.;
-        sim.real[1] = 1.;
+        sim.real[n / 2] = 3.;
+        //sim.real[1] = 1.;
 
         //let mut sim = wave_packet(DT * 50., 0., 1., 0.1, 1001);
 
@@ -70,8 +70,14 @@ impl Sim {
         for i in 0..n {
             let c = HBAR * DT / (2. * M * DX.powi(2));
 
-            self.imag[i] += c * (self.real[(i + 1) % n] + self.real[i.checked_sub(1).unwrap_or(n-1)] + 2. * self.real[i]);
-            self.real[i] -= c * (self.imag[(i + 1) % n] + self.imag[i.checked_sub(1).unwrap_or(n-1)] + 2. * self.imag[i]);
+            self.imag[i] += c
+                * (self.real[(i + 1) % n]
+                    + self.real[i.checked_sub(1).unwrap_or(n - 1)]
+                    + 2. * self.real[i]);
+            self.real[i] -= c
+                * (self.imag[(i + 1) % n]
+                    + self.imag[i.checked_sub(1).unwrap_or(n - 1)]
+                    + 2. * self.imag[i]);
         }
     }
 }
@@ -87,6 +93,14 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
             let idx = mesh.push_vertex(Vertex::new(pos, color));
             mesh.push_indices(&[idx]);
         }
+
+        let pos = [
+            (f * TAU).cos(),
+            sim.real[i].powi(2) + sim.imag[i].powi(2) + 1.,
+            (f * TAU).sin(),
+        ];
+        let idx = mesh.push_vertex(Vertex::new(pos, [1.; 3]));
+        mesh.push_indices(&[idx]);
     }
 
     mesh
