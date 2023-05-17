@@ -23,12 +23,18 @@ impl UserState for ClientState {
 
         sched.add_system(Self::update).build();
 
-        let mut sim = Sim::new(1000);
+        let mut sim = Sim::new(12_000);
         let n = sim.real.len();
-        sim.real[n / 2] = 3.;
+
+        for i in 0..n/18 {
+            sim.real[i] = 0.1;
+            sim.imag[i] = 0.1;
+        }
+
+        //sim.real[n / 2] = 3.;
         //sim.real[1] = 1.;
 
-        //let mut sim = wave_packet(DT * 50., 0., 1., 0.1, 1001);
+        let mut sim = wave_packet(DT * (n as f32 / 100.), 0., 1., 0.1, 1001);
 
         Self(sim)
     }
@@ -70,13 +76,16 @@ impl Sim {
         for i in 0..n {
             let c = HBAR * DT / (2. * M * DX.powi(2));
 
+            let plus_1 = (i + 1) % n;
+            let minu_1 = i.checked_sub(1).unwrap_or(n - 1);
+
             self.imag[i] += c
-                * (self.real[(i + 1) % n]
-                    + self.real[i.checked_sub(1).unwrap_or(n - 1)]
+                * (self.real[plus_1]
+                    + self.real[minu_1]
                     + 2. * self.real[i]);
             self.real[i] -= c
-                * (self.imag[(i + 1) % n]
-                    + self.imag[i.checked_sub(1).unwrap_or(n - 1)]
+                * (self.imag[plus_1]
+                    + self.imag[minu_1]
                     + 2. * self.imag[i]);
         }
     }
@@ -88,15 +97,20 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
     let n = sim.real.len();
     for i in 0..n {
         let f = i as f32 / n as f32;
-        for (part, color) in [(&sim.real, [1., 0., 0.]), (&sim.imag, [0., 0.2, 1.])] {
-            let pos = [(f*TAU).cos(), part[i], (f*TAU).sin()];
+        let colors = [
+            (&sim.real, [1., 0., 0.]), 
+            (&sim.imag, [0., 0.5, 1.])
+        ];
+        for (part, color) in colors {
+            let pos = [(f * TAU).cos(), part[i], (f * TAU).sin()];
             let idx = mesh.push_vertex(Vertex::new(pos, color));
             mesh.push_indices(&[idx]);
         }
 
+        let mag = sim.real[i].powi(2) + sim.imag[i].powi(2);
         let pos = [
             (f * TAU).cos(),
-            sim.real[i].powi(2) + sim.imag[i].powi(2) + 1.,
+            mag + 1.,
             (f * TAU).sin(),
         ];
         let idx = mesh.push_vertex(Vertex::new(pos, [1.; 3]));
