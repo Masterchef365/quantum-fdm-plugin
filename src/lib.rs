@@ -1,6 +1,7 @@
 use std::f32::consts::TAU;
 
 use cimvr_common::{
+    desktop::{ElementState, InputEvent, KeyCode, KeyboardEvent},
     render::{Mesh, MeshHandle, Primitive, Render, UploadMesh, Vertex},
     Transform,
 };
@@ -9,9 +10,31 @@ use cimvr_engine_interface::{make_app_state, pkg_namespace, prelude::*, println}
 mod array2d;
 
 // All state associated with client-side behaviour
-struct ClientState(Sim);
+struct ClientState {
+    sim: Sim,
+    is_paused: bool,
+}
 
 const WAVE_RDR: MeshHandle = MeshHandle::new(pkg_namespace!("Wave"));
+
+fn setup() -> Sim {
+    let n = 1000;
+
+    let mut wave1 = wave_packet(DT * (n as f32 / 100.), 0., 1., 1.5, n);
+    let wave2 = wave_packet(DT * (n as f32 / 100.), 5., 1., 1.5, n);
+    wave1
+        .real
+        .iter_mut()
+        .zip(&wave2.real)
+        .for_each(|(a, b)| *a += b);
+    wave1
+        .imag
+        .iter_mut()
+        .zip(&wave2.imag)
+        .for_each(|(a, b)| *a += b);
+
+    wave1
+}
 
 impl UserState for ClientState {
     // Implement a constructor
@@ -21,7 +44,10 @@ impl UserState for ClientState {
             .add_component(Render::new(WAVE_RDR).primitive(Primitive::Points))
             .build();
 
-        sched.add_system(Self::update).build();
+        sched
+            .add_system(Self::update)
+            .subscribe::<InputEvent>()
+            .build();
 
         /*
         let mut sim = Sim::new(12_000);
@@ -36,29 +62,43 @@ impl UserState for ClientState {
         //sim.real[n / 2] = 3.;
         //sim.real[1] = 1.;
 
-        let n = 1000;
+        let sim = setup();
 
-        let mut wave1 = wave_packet(DT * (n as f32 / 100.), 0., 1., 1.5, n);
-        let wave2 = wave_packet(DT * (n as f32 / 100.), 5., 1., 1.5, n);
-        wave1.real.iter_mut().zip(&wave2.real).for_each(|(a, b)| *a += b);
-        wave1.imag.iter_mut().zip(&wave2.imag).for_each(|(a, b)| *a += b);
-
-        let sim = wave1;
-
-        Self(sim)
+        Self {
+            sim,
+            is_paused: true,
+        }
     }
 }
 
 impl ClientState {
     fn update(&mut self, io: &mut EngineIo, _query: &mut QueryResult) {
-        let Self(sim) = self;
-        for _ in 0..100 {
-            sim.step();
+        if !self.is_paused {
+            for _ in 0..100 {
+                self.sim.step();
+            }
+        }
+
+        if let Some(ev) = io.inbox_first::<InputEvent>() {
+            match ev {
+                InputEvent::Keyboard(key) => match key {
+                    KeyboardEvent::Key {
+                        key: KeyCode::Space,
+                        state: ElementState::Released,
+                    } => self.is_paused = !self.is_paused,
+                    KeyboardEvent::Key {
+                        key: KeyCode::R,
+                        state: ElementState::Released,
+                    } => self.sim = setup(),
+                    _ => (),
+                },
+                _ => (),
+            }
         }
 
         io.send(&UploadMesh {
             id: WAVE_RDR,
-            mesh: sim_to_mesh(&sim),
+            mesh: sim_to_mesh(&self.sim),
         })
     }
 }
