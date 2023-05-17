@@ -13,6 +13,7 @@ mod array2d;
 struct ClientState {
     sim: Sim,
     is_paused: bool,
+    steps_per_frame: usize,
 }
 
 const WAVE_RDR: MeshHandle = MeshHandle::new(pkg_namespace!("Wave"));
@@ -66,7 +67,8 @@ impl UserState for ClientState {
 
         Self {
             sim,
-            is_paused: true,
+            is_paused: false,
+            steps_per_frame: 100,
         }
     }
 }
@@ -74,7 +76,7 @@ impl UserState for ClientState {
 impl ClientState {
     fn update(&mut self, io: &mut EngineIo, _query: &mut QueryResult) {
         if !self.is_paused {
-            for _ in 0..100 {
+            for _ in 0..self.steps_per_frame {
                 self.sim.step();
             }
         }
@@ -82,6 +84,14 @@ impl ClientState {
         if let Some(ev) = io.inbox_first::<InputEvent>() {
             match ev {
                 InputEvent::Keyboard(key) => match key {
+                    KeyboardEvent::Key {
+                        key: KeyCode::Up,
+                        state: ElementState::Released,
+                    } => self.steps_per_frame += self.steps_per_frame.max(1),
+                    KeyboardEvent::Key {
+                        key: KeyCode::Down,
+                        state: ElementState::Released,
+                    } => self.steps_per_frame = self.steps_per_frame.checked_sub((self.steps_per_frame/2).max(1)).unwrap_or(0),
                     KeyboardEvent::Key {
                         key: KeyCode::Space,
                         state: ElementState::Released,
@@ -151,9 +161,28 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
 
         let mag = sim.real[i].powi(2) + sim.imag[i].powi(2);
         let pos = [(f * TAU).cos(), mag + 1., (f * TAU).sin()];
-        let idx = mesh.push_vertex(Vertex::new(pos, [1.; 3]));
+        let c = [1., 0.5, 0.5];
+        let idx = mesh.push_vertex(Vertex::new(pos, c));
+        mesh.push_indices(&[idx]);
+
+        let pos = [(f * TAU).cos(), 1., (f * TAU).sin()];
+        let idx = mesh.push_vertex(Vertex::new(pos, [0.1; 3]));
+        mesh.push_indices(&[idx]);
+
+        let pos = [(f * TAU).cos(), 0., (f * TAU).sin()];
+        let idx = mesh.push_vertex(Vertex::new(pos, [0.1; 3]));
         mesh.push_indices(&[idx]);
     }
+
+    let f = 400;
+    for i in 0..f {
+        let k = i as f32 / f as f32;
+        let k = k * 3. - 1.;
+        let pos = [0., k, 0.];
+        let idx = mesh.push_vertex(Vertex::new(pos, [0.05; 3]));
+        mesh.push_indices(&[idx]);
+    }
+
 
     mesh
 }
