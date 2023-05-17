@@ -1,3 +1,5 @@
+use std::f32::consts::TAU;
+
 use cimvr_common::{
     render::{Mesh, MeshHandle, Primitive, Render, UploadMesh, Vertex},
     Transform,
@@ -21,11 +23,12 @@ impl UserState for ClientState {
 
         sched.add_system(Self::update).build();
 
-        //let mut sim = Sim::new(1000);
-        //let n = sim.real.len();
+        let mut sim = Sim::new(1000);
+        let n = sim.real.len();
         //sim.real[n/2] = 1.;
+        sim.real[1] = 1.;
 
-        let sim = wave_packet(DT * 50., 0., 1., 0.1, 1001);
+        //let mut sim = wave_packet(DT * 50., 0., 1., 0.1, 1001);
 
         Self(sim)
     }
@@ -64,11 +67,11 @@ impl Sim {
     pub fn step(&mut self) {
         let n = self.real.len();
 
-        for i in 1..n - 1 {
+        for i in 0..n {
             let c = HBAR * DT / (2. * M * DX.powi(2));
 
-            self.imag[i] += c * (self.real[i + 1] + self.real[i - 1] + 2. * self.real[i]);
-            self.real[i] -= c * (self.imag[i + 1] + self.imag[i - 1] + 2. * self.imag[i]);
+            self.imag[i] += c * (self.real[(i + 1) % n] + self.real[i.checked_sub(1).unwrap_or(n-1)] + 2. * self.real[i]);
+            self.real[i] -= c * (self.imag[(i + 1) % n] + self.imag[i.checked_sub(1).unwrap_or(n-1)] + 2. * self.imag[i]);
         }
     }
 }
@@ -80,7 +83,7 @@ fn sim_to_mesh(sim: &Sim) -> Mesh {
     for i in 0..n {
         let f = i as f32 / n as f32;
         for (part, color) in [(&sim.real, [1., 0., 0.]), (&sim.imag, [0., 0.2, 1.])] {
-            let pos = [f, part[i], 0.];
+            let pos = [(f*TAU).cos(), part[i], (f*TAU).sin()];
             let idx = mesh.push_vertex(Vertex::new(pos, color));
             mesh.push_indices(&[idx]);
         }
